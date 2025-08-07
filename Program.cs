@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Recipt_api
 {
@@ -7,8 +9,23 @@ namespace Recipt_api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // Add PostgreSQL and EF Core
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
+
+            // Add Google authentication
+            builder.Services.AddAuthentication()
+                .AddGoogle(options =>
+                {
+                    options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
+                    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+                });
+
+            // Add services to the container.
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -24,9 +41,8 @@ namespace Recipt_api
             }
 
             app.UseHttpsRedirection();
-
+            app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 
