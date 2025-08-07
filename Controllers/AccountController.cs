@@ -7,11 +7,16 @@ public class AccountController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly JwtTokenHelper _jwtTokenHelper;
 
-    public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+    public AccountController(
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
+        JwtTokenHelper jwtTokenHelper)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _jwtTokenHelper = jwtTokenHelper;
     }
 
     [HttpPost("register")]
@@ -29,10 +34,17 @@ public class AccountController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
     {
-        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
+        var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user == null)
+            return Unauthorized("Invalid login attempt.");
+
+        var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
 
         if (result.Succeeded)
-            return Ok("Login successful.");
+        {
+            var token = _jwtTokenHelper.GenerateToken(user.Id, user.Email);
+            return Ok(new { token });
+        }
 
         return Unauthorized("Invalid login attempt.");
     }
