@@ -1,7 +1,6 @@
 # Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
-USER app
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 
