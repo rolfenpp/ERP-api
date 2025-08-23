@@ -1,0 +1,13 @@
+{
+	"Servers": {
+		"1": {
+			"Name": "ReciptDB",
+			"Group": "Servers",
+			"Port": 5432,
+			"Username": "myuser",
+			"Host": "db",
+			"SSLMode": "prefer",
+			"MaintenanceDB": "reciptdb"
+		}
+	}
+}
