@@ -66,7 +66,7 @@ namespace Recipt_api
                     policy.WithOrigins(allowedOrigins)
                           .AllowAnyHeader()
                           .AllowAnyMethod();
-                    // .AllowCredentials() ta kakan sen
+                    // .AllowCredentials() ta kakan senare
                 });
             });
 
