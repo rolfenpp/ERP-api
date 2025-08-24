@@ -16,9 +16,6 @@ public class GoogleAccountController : ControllerBase
         _signInManager = signInManager;
     }
 
-    // === existing register/login actions here ===
-
-    // 1) Start Google sign-in (frontend hits this; it redirects to Google)
     [HttpGet("google")]
     [AllowAnonymous]
     public IActionResult GoogleLogin([FromQuery] string? returnUrl = null)
@@ -28,7 +25,6 @@ public class GoogleAccountController : ControllerBase
         return Challenge(props, "Google");
     }
 
-    // 2) Google redirects back here after user approves
     [HttpGet("google-callback")]
     [AllowAnonymous]
     public async Task<IActionResult> GoogleCallback([FromQuery] string? returnUrl = null, [FromQuery] string? remoteError = null)
@@ -40,14 +36,12 @@ public class GoogleAccountController : ControllerBase
         if (info == null)
             return BadRequest("No external login info.");
 
-        // Try sign-in with existing external login
         var signInResult = await _signInManager.ExternalLoginSignInAsync(
             info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
 
         if (signInResult.Succeeded)
             return Ok("Login successful with Google.");
 
-        // If we got here, the user might be new. Create a local user and link Google login.
         var email = info.Principal.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrEmpty(email))
             return BadRequest("Google account has no email.");
@@ -65,8 +59,6 @@ public class GoogleAccountController : ControllerBase
 
         await _signInManager.SignInAsync(user, isPersistent: false);
 
-        // If you have a frontend, you can redirect instead:
-        // return Redirect(returnUrl ?? "/");
         return Ok("User created/linked and logged in with Google.");
     }
 }
