@@ -52,23 +52,24 @@ namespace Recipt_api
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+                        Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
+                    ClockSkew = TimeSpan.FromMinutes(1) // tighter than default 5m
                 };
             });
 
-            var allowedOrigins = builder.Configuration
-                .GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" };
+            var allowedOrigins = new[] { "http://localhost:5173" };
 
             builder.Services.AddCors(opt =>
             {
-                opt.AddPolicy("DefaultCors", policy =>
+                opt.AddPolicy("DevCors", policy =>
                 {
                     policy.WithOrigins(allowedOrigins)
                           .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
+                          .AllowAnyMethod();
+                    // .AllowCredentials() ta kakan sen
                 });
             });
+
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
@@ -93,8 +94,9 @@ namespace Recipt_api
             {
                 app.UseHttpsRedirection();
             }
-            
-            app.UseCors("DefaultCors");
+
+            app.UseRouting();
+            app.UseCors("DevCors");
             app.UseAuthentication();
             app.UseAuthorization();
 

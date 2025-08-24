@@ -1,0 +1,79 @@
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypassword}
+      POSTGRES_DB: ${POSTGRES_DB:-reciptdb}
+    ports:
+      - "5433:5432" # host:container
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myuser} -d ${POSTGRES_DB:-reciptdb}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  web: # .NET API (hot reload via Dockerfile.dev + dotnet watch)
+    build:
+      context: .         # folder with Recipt-api.csproj
+      dockerfile: Dockerfile.dev  # or "Dockerfile.dev" if at root
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-reciptdb};Username=${POSTGRES_USER:-myuser};Password=${POSTGRES_PASSWORD:-mypassword}
+      Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
+      Jwt__Key: ${JWT_KEY:-change-me-in-.env}
+      Jwt__Issuer: ${JWT_ISSUER:-recipt-api}
+      Jwt__Audience: ${JWT_AUDIENCE:-recipt-api-users}
+    ports:
+      - "5001:8080" # API at http://localhost:5001
+    volumes:
+      - ./:/src
+      - /src/bin
+      - /src/obj
+      - dpkeys:/root/.aspnet/DataProtection-Keys
+
+  webclient: # React + Vite dev server (optional; only starts with --profile frontend)
+    profiles: ["frontend"]
+    build:
+      context: ./webclient
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5001 # browser calls API on host
+    volumes:
+      - ./webclient:/app
+      - /app/node_modules
+    depends_on:
+      - web
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    ports:
+      - "5050:80" # http://localhost:5050
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./servers.json:/pgadmin4/servers.json:ro # remove if you don't have this file
+
+volumes:
+  pgdata:
+  dpkeys:
+  pgadmin_data:

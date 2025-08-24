@@ -1,0 +1,13 @@
+﻿FROM mcr.microsoft.com/dotnet/sdk:8.0
+WORKDIR /src
+
+# Better file watching inside a container
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
+ENV DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1
+
+# Cache restore (fast rebuilds)
+COPY Recipt-api.csproj .
+RUN dotnet restore
+
+# Source will be mounted by docker-compose; dotnet watch will rebuild on change
+CMD ["dotnet","watch","run","--urls","http://0.0.0.0:8080"]
