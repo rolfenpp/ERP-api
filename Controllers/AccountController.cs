@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore; // for AnyAsync
+using System.Security.Claims;
 
 [ApiController]
 [Route("[controller]")]
@@ -22,13 +24,18 @@ public class AccountController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterModel model)
     {
+        var isFirstUser = !await _userManager.Users.AnyAsync();
+
         var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
         var result = await _userManager.CreateAsync(user, model.Password);
 
-        if (result.Succeeded)
-            return Ok("User registered successfully.");
+        if (!result.Succeeded)
+            return BadRequest(result.Errors);
 
-        return BadRequest(result.Errors);
+        var role = isFirstUser ? "Admin" : "Employee";
+        await _userManager.AddToRoleAsync(user, role);
+
+        return Ok("User registered successfully.");
     }
 
     [HttpPost("login")]
@@ -39,14 +46,13 @@ public class AccountController : ControllerBase
             return Unauthorized("Invalid login attempt.");
 
         var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
+        if (!result.Succeeded)
+            return Unauthorized("Invalid login attempt.");
 
-        if (result.Succeeded)
-        {
-            var token = _jwtTokenHelper.GenerateToken(user.Id, user.Email);
-            return Ok(new { token });
-        }
-
-        return Unauthorized("Invalid login attempt.");
+        var roles = await _userManager.GetRolesAsync(user);
+        var claims = await _userManager.GetClaimsAsync(user);
+        var token = _jwtTokenHelper.GenerateToken(user, roles, claims);
+        return Ok(new { token });
     }
 }
 

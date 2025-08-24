@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models; // add
 
 namespace Recipt_api
 {
@@ -53,7 +54,7 @@ namespace Recipt_api
                     ValidAudience = builder.Configuration["Jwt:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
-                    ClockSkew = TimeSpan.FromMinutes(1) // tighter than default 5m
+                    ClockSkew = TimeSpan.FromMinutes(1)
                 };
             });
 
@@ -66,14 +67,39 @@ namespace Recipt_api
                     policy.WithOrigins(allowedOrigins)
                           .AllowAnyHeader()
                           .AllowAnyMethod();
-                    // .AllowCredentials() ta kakan senare
                 });
             });
 
-
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+
+            // Configure Swagger with Bearer auth
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "ERP API", Version = "v1" });
+
+                var bearerScheme = new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Paste your JWT (no 'Bearer ' prefix)",
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                };
+
+                c.AddSecurityDefinition("Bearer", bearerScheme);
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    { bearerScheme, Array.Empty<string>() }
+                });
+            });
+
             builder.Services.AddScoped<JwtTokenHelper>();
 
             var app = builder.Build();
@@ -82,6 +108,7 @@ namespace Recipt_api
             {
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 db.Database.Migrate();
+                SeedRolesAsync(scope.ServiceProvider).GetAwaiter().GetResult();
             }
 
             if (app.Environment.IsDevelopment())
@@ -103,6 +130,20 @@ namespace Recipt_api
             app.MapControllers();
 
             app.Run();
+        }
+
+        private static async Task SeedRolesAsync(IServiceProvider services)
+        {
+            var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+            var roles = new[] { "Admin", "Employee" };
+
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(role));
+                }
+            }
         }
     }
 }

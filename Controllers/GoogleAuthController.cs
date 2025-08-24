@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore; // AnyAsync
 
 [ApiController]
 [Route("account")]
@@ -9,11 +10,16 @@ public class GoogleAccountController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly JwtTokenHelper _jwtTokenHelper;
 
-    public GoogleAccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+    public GoogleAccountController(
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
+        JwtTokenHelper jwtTokenHelper)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _jwtTokenHelper = jwtTokenHelper;
     }
 
     [HttpGet("google")]
@@ -39,26 +45,40 @@ public class GoogleAccountController : ControllerBase
         var signInResult = await _signInManager.ExternalLoginSignInAsync(
             info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
 
-        if (signInResult.Succeeded)
-            return Ok("Login successful with Google.");
-
         var email = info.Principal.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrEmpty(email))
             return BadRequest("Google account has no email.");
 
-        var user = await _userManager.FindByEmailAsync(email);
-        if (user == null)
+        ApplicationUser? user;
+        if (signInResult.Succeeded)
         {
-            user = new ApplicationUser { UserName = email, Email = email };
-            var createResult = await _userManager.CreateAsync(user);
-            if (!createResult.Succeeded) return BadRequest(createResult.Errors);
+            user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return BadRequest("User not found after Google sign-in.");
+        }
+        else
+        {
+            user = await _userManager.FindByEmailAsync(email);
+            var isFirstUser = !await _userManager.Users.AnyAsync();
+
+            if (user == null)
+            {
+                user = new ApplicationUser { UserName = email, Email = email };
+                var createResult = await _userManager.CreateAsync(user);
+                if (!createResult.Succeeded) return BadRequest(createResult.Errors);
+
+                await _userManager.AddToRoleAsync(user, isFirstUser ? "Admin" : "Employee");
+            }
+
+            var addLoginResult = await _userManager.AddLoginAsync(user, info);
+            if (!addLoginResult.Succeeded) return BadRequest(addLoginResult.Errors);
+
+            await _signInManager.SignInAsync(user, isPersistent: false);
         }
 
-        var addLoginResult = await _userManager.AddLoginAsync(user, info);
-        if (!addLoginResult.Succeeded) return BadRequest(addLoginResult.Errors);
+        var roles = await _userManager.GetRolesAsync(user!);
+        var claims = await _userManager.GetClaimsAsync(user!);
+        var token = _jwtTokenHelper.GenerateToken(user!, roles, claims);
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-
-        return Ok("User created/linked and logged in with Google.");
+        return Ok(new { token });
     }
 }
