@@ -3,7 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models; // add
+using Microsoft.OpenApi.Models;
 
 namespace Recipt_api
 {
@@ -19,6 +19,8 @@ namespace Recipt_api
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.User.RequireUniqueEmail = true;
+                // Turn this on to enforce activation before login (ensure your admin is confirmed)
+                options.SignIn.RequireConfirmedEmail = true;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
@@ -73,7 +75,6 @@ namespace Recipt_api
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
 
-            // Configure Swagger with Bearer auth
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "ERP API", Version = "v1" });
