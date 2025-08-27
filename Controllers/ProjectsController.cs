@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 using System.Linq;
 using System.Collections.Generic;
 using Recipt_api;
@@ -22,7 +21,7 @@ public class ProjectsController : ControllerBase
         return int.TryParse(claim, out var id) ? id : 0;
     }
 
-    // List projects
+    // List projects (any authenticated user in company)
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProjectDto>>> GetAll()
     {
@@ -46,7 +45,7 @@ public class ProjectsController : ControllerBase
         return Ok(items);
     }
 
-    // Get single project
+    // Get single project (any authenticated user in company)
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ProjectDto>> GetById(int id)
     {
@@ -70,9 +69,9 @@ public class ProjectsController : ControllerBase
         return Ok(p);
     }
 
-    // Create project (Admin only)
+    // Create project (Admin OR user with create_projects)
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = Permissions.CreateProjects)]
     public async Task<ActionResult<ProjectDto>> Create([FromBody] CreateProjectDto dto)
     {
         var companyId = GetCompanyId();
@@ -104,9 +103,9 @@ public class ProjectsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, result);
     }
 
-    // Update project (Admin only)
+    // Update project (Admin OR user with edit_projects)
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = Permissions.EditProjects)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateProjectDto dto)
     {
         var companyId = GetCompanyId();
@@ -124,9 +123,9 @@ public class ProjectsController : ControllerBase
         return NoContent();
     }
 
-    // Delete project (Admin only)
+    // Delete project (Admin OR user with delete_projects)
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = Permissions.DeleteProjects)]
     public async Task<IActionResult> Delete(int id)
     {
         var companyId = GetCompanyId();

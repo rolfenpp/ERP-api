@@ -11,4 +11,5 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
 }

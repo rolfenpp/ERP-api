@@ -60,6 +60,18 @@ namespace Recipt_api
                 };
             });
 
+            // Policy-based auth: Admin OR claim("perm", permission)
+            builder.Services.AddAuthorization(options =>
+            {
+                foreach (var perm in Permissions.All)
+                {
+                    options.AddPolicy(perm, p =>
+                        p.RequireAssertion(ctx =>
+                            ctx.User.IsInRole("Admin") ||
+                            ctx.User.HasClaim("perm", perm)));
+                }
+            });
+
             var allowedOrigins = new[] { "http://localhost:5173" };
 
             builder.Services.AddCors(opt =>
@@ -136,7 +148,7 @@ namespace Recipt_api
         private static async Task SeedRolesAsync(IServiceProvider services)
         {
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-            var roles = new[] { "Admin", "Employee" };
+            var roles = new[] { "Admin", "User" };
 
             foreach (var role in roles)
             {

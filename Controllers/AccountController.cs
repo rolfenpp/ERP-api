@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.WebUtilities; // for WebEncoders
 using System.Text; // for Encoding
+using System.Linq; // LINQ
 
 [ApiController]
 [Route("[controller]")]
@@ -43,12 +44,16 @@ public class AccountController : ControllerBase
         if (user is null) return Unauthorized();
 
         var roles = await _userManager.GetRolesAsync(user);
+        var claims = await _userManager.GetClaimsAsync(user);
+        var perms = claims.Where(c => c.Type == "perm").Select(c => c.Value).ToArray();
+
         return Ok(new
         {
             id = user.Id,
             email = user.Email,
             companyId = user.CompanyId,
-            roles
+            roles,
+            permissions = perms
         });
     }
 
@@ -80,7 +85,7 @@ public class AccountController : ControllerBase
         var createResult = await _userManager.CreateAsync(newUser); // no password
         if (!createResult.Succeeded) return BadRequest(createResult.Errors);
 
-        var roles = (model.Roles?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? new[] { "Employee" });
+        var roles = (model.Roles?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? new[] { "User" });
         foreach (var r in roles)
         {
             if (!await _roleManager.RoleExistsAsync(r))
@@ -127,7 +132,7 @@ public class AccountController : ControllerBase
         var createResult = await _userManager.CreateAsync(newUser, model.Password);
         if (!createResult.Succeeded) return BadRequest(createResult.Errors);
 
-        var roles = (model.Roles?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? new[] { "Employee" });
+        var roles = (model.Roles?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? new[] { "User" });
         foreach (var r in roles)
         {
             if (!await _roleManager.RoleExistsAsync(r))
@@ -144,6 +149,74 @@ public class AccountController : ControllerBase
             companyId = newUser.CompanyId,
             roles
         });
+    }
+
+    // Admin: get a user's permissions (same company)
+    [Authorize(Roles = "Admin")]
+    [HttpGet("users/{userId}/permissions")]
+    public async Task<IActionResult> GetUserPermissions(string userId)
+    {
+        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(adminId)) return Unauthorized();
+
+        var admin = await _userManager.FindByIdAsync(adminId);
+        if (admin is null) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return NotFound("User not found.");
+        if (user.CompanyId != admin.CompanyId) return Forbid();
+
+        var claims = await _userManager.GetClaimsAsync(user);
+        var perms = claims.Where(c => c.Type == "perm").Select(c => c.Value).ToArray();
+        return Ok(new { userId = user.Id, permissions = perms });
+    }
+
+    public class SetPermissionsRequest
+    {
+        [Required] public IEnumerable<string> Permissions { get; set; } = Array.Empty<string>();
+    }
+
+    // Admin: replace a user's permissions completely (same company)
+    [Authorize(Roles = "Admin")]
+    [HttpPut("users/{userId}/permissions")]
+    public async Task<IActionResult> SetUserPermissions(string userId, [FromBody] SetPermissionsRequest req)
+    {
+        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(adminId)) return Unauthorized();
+
+        var admin = await _userManager.FindByIdAsync(adminId);
+        if (admin is null) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return NotFound("User not found.");
+        if (user.CompanyId != admin.CompanyId) return Forbid();
+
+        var requested = req.Permissions?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>();
+
+        // Validate against whitelist
+        var invalid = requested.Except(Permissions.All, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (invalid.Length > 0)
+            return BadRequest($"Invalid permission(s): {string.Join(", ", invalid)}");
+
+        var existingClaims = (await _userManager.GetClaimsAsync(user))
+            .Where(c => c.Type == "perm")
+            .ToArray();
+
+        if (existingClaims.Length > 0)
+        {
+            var remove = await _userManager.RemoveClaimsAsync(user, existingClaims);
+            if (!remove.Succeeded) return BadRequest(remove.Errors);
+        }
+
+        var newClaims = requested.Select(p => new Claim("perm", p)).ToArray();
+        if (newClaims.Length > 0)
+        {
+            var add = await _userManager.AddClaimsAsync(user, newClaims);
+            if (!add.Succeeded) return BadRequest(add.Errors);
+        }
+
+        // Note: user must re-authenticate or receive a new token to see updated permissions.
+        return NoContent();
     }
 
     // Admin generates a one-time activation (email confirm + password reset) link for a user in their company
@@ -214,7 +287,7 @@ public class AccountController : ControllerBase
         return Ok(new { token = jwt });
     }
 
-    // Keep existing simple register (first user Admin), mainly for dev
+    // Keep existing simple register (first user Admin)
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterModel model)
     {
@@ -226,7 +299,7 @@ public class AccountController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
-        var role = isFirstUser ? "Admin" : "Employee";
+        var role = isFirstUser ? "Admin" : "User";
         await _userManager.AddToRoleAsync(user, role);
 
         return Ok("User registered successfully.");
@@ -270,7 +343,7 @@ public class CreateUserModel
     [Required]
     public string Password { get; set; } = string.Empty;
 
-    // Optional (defaults to ["Employee"])
+    // Optional (defaults to ["User"])
     public IEnumerable<string>? Roles { get; set; }
 }
 
@@ -279,14 +352,14 @@ public class CreateUserBasicModel
     [Required, EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    // Optional (defaults to ["Employee"])
+    // Optional (defaults to ["User"])
     public IEnumerable<string>? Roles { get; set; }
 }
 
 public class ActivateAccountModel
 {
-    [Required] public string UserId { get; set; } = string.Empty; // from invite URL
-    [Required] public string EmailToken { get; set; } = string.Empty; // c=...
-    [Required] public string ResetToken { get; set; } = string.Empty; // r=...
+    [Required] public string UserId { get; set; } = string.Empty;
+    [Required] public string EmailToken { get; set; } = string.Empty;
+    [Required] public string ResetToken { get; set; } = string.Empty;
     [Required] public string Password { get; set; } = string.Empty;
 }

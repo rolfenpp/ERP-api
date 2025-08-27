@@ -66,7 +66,7 @@ public class GoogleAccountController : ControllerBase
                 var createResult = await _userManager.CreateAsync(user);
                 if (!createResult.Succeeded) return BadRequest(createResult.Errors);
 
-                await _userManager.AddToRoleAsync(user, isFirstUser ? "Admin" : "Employee");
+                await _userManager.AddToRoleAsync(user, isFirstUser ? "Admin" : "User");
             }
 
             var addLoginResult = await _userManager.AddLoginAsync(user, info);
