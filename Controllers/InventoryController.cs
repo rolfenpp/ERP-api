@@ -37,6 +37,7 @@ public class InventoryController : ControllerBase
                 Sku = i.Sku,
                 Name = i.Name,
                 Description = i.Description,
+                Category = i.Category,
                 QuantityOnHand = i.QuantityOnHand,
                 UnitPrice = i.UnitPrice,
                 ReorderLevel = i.ReorderLevel,
@@ -63,6 +64,7 @@ public class InventoryController : ControllerBase
                 Sku = i.Sku,
                 Name = i.Name,
                 Description = i.Description,
+                Category = i.Category,
                 QuantityOnHand = i.QuantityOnHand,
                 UnitPrice = i.UnitPrice,
                 ReorderLevel = i.ReorderLevel,
@@ -83,17 +85,21 @@ public class InventoryController : ControllerBase
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var companyId = GetCompanyId();
-        var sku = dto.Sku.Trim();
+        var sku = (dto.Sku ?? string.Empty).Trim();
 
-        var exists = await _db.InventoryItems.AnyAsync(i => i.CompanyId == companyId && i.Sku == sku);
-        if (exists) return Conflict("An item with this SKU already exists in your company.");
+        if (!string.IsNullOrEmpty(sku))
+        {
+            var exists = await _db.InventoryItems.AnyAsync(i => i.CompanyId == companyId && i.Sku == sku);
+            if (exists) return Conflict("An item with this SKU already exists in your company.");
+        }
 
         var entity = new InventoryItem
         {
             Sku = sku,
             Name = dto.Name.Trim(),
             Description = dto.Description,
-            QuantityOnHand = dto.QuantityOnHand,
+            Category = dto.Category?.Trim(),
+            QuantityOnHand = dto.QuantityOnHand, // 0 is valid
             UnitPrice = dto.UnitPrice,
             ReorderLevel = dto.ReorderLevel,
             CompanyId = companyId,
@@ -109,6 +115,7 @@ public class InventoryController : ControllerBase
             Sku = entity.Sku,
             Name = entity.Name,
             Description = entity.Description,
+            Category = entity.Category,
             QuantityOnHand = entity.QuantityOnHand,
             UnitPrice = entity.UnitPrice,
             ReorderLevel = entity.ReorderLevel,
@@ -131,16 +138,23 @@ public class InventoryController : ControllerBase
         var entity = await _db.InventoryItems.FirstOrDefaultAsync(i => i.Id == id && i.CompanyId == companyId);
         if (entity is null) return NotFound();
 
-        var newSku = dto.Sku.Trim();
-        if (!string.Equals(entity.Sku, newSku, StringComparison.Ordinal))
+        if (dto.Sku is not null) // only process SKU if provided
         {
-            var skuTaken = await _db.InventoryItems.AnyAsync(i => i.CompanyId == companyId && i.Sku == newSku && i.Id != id);
-            if (skuTaken) return Conflict("An item with this SKU already exists in your company.");
-            entity.Sku = newSku;
+            var newSku = dto.Sku.Trim();
+            if (!string.Equals(entity.Sku, newSku, StringComparison.Ordinal))
+            {
+                if (!string.IsNullOrEmpty(newSku))
+                {
+                    var skuTaken = await _db.InventoryItems.AnyAsync(i => i.CompanyId == companyId && i.Sku == newSku && i.Id != id);
+                    if (skuTaken) return Conflict("An item with this SKU already exists in your company.");
+                }
+                entity.Sku = newSku; // allow clearing to empty
+            }
         }
 
         entity.Name = dto.Name.Trim();
         entity.Description = dto.Description;
+        entity.Category = dto.Category?.Trim();
         entity.QuantityOnHand = dto.QuantityOnHand;
         entity.UnitPrice = dto.UnitPrice;
         entity.ReorderLevel = dto.ReorderLevel;
@@ -172,6 +186,7 @@ public class InventoryItemDto
     public string Sku { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? Category { get; set; }
     public int QuantityOnHand { get; set; }
     public decimal UnitPrice { get; set; }
     public int? ReorderLevel { get; set; }
@@ -181,8 +196,8 @@ public class InventoryItemDto
 
 public class CreateInventoryItemDto
 {
-    [Required, MaxLength(64)]
-    public string Sku { get; set; } = string.Empty;
+    [MaxLength(64)]
+    public string? Sku { get; set; } // optional
 
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
@@ -190,8 +205,11 @@ public class CreateInventoryItemDto
     [MaxLength(1000)]
     public string? Description { get; set; }
 
+    [MaxLength(100)]
+    public string? Category { get; set; } // optional
+
     [Range(0, int.MaxValue)]
-    public int QuantityOnHand { get; set; }
+    public int QuantityOnHand { get; set; } // required conceptually; 0 is valid
 
     [Range(typeof(decimal), "0", "79228162514264337593543950335")]
     public decimal UnitPrice { get; set; }
@@ -202,14 +220,17 @@ public class CreateInventoryItemDto
 
 public class UpdateInventoryItemDto
 {
-    [Required, MaxLength(64)]
-    public string Sku { get; set; } = string.Empty;
+    [MaxLength(64)]
+    public string? Sku { get; set; } // optional on update too
 
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
     [MaxLength(1000)]
     public string? Description { get; set; }
+
+    [MaxLength(100)]
+    public string? Category { get; set; } // optional
 
     [Range(0, int.MaxValue)]
     public int QuantityOnHand { get; set; }

@@ -15,6 +15,9 @@ public class InventoryItem
     [MaxLength(1000)]
     public string? Description { get; set; }
 
+    [MaxLength(100)]
+    public string? Category { get; set; }
+
     public int QuantityOnHand { get; set; }
 
     public decimal UnitPrice { get; set; }
