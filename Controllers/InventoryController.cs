@@ -1,10 +1,8 @@
+using ErpApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using System.Collections.Generic;
-using System.Linq;
-using Recipt_api;
 
 [ApiController]
 [Route("inventory")]

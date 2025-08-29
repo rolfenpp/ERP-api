@@ -7,11 +7,11 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-myuser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypassword}
-      POSTGRES_DB: ${POSTGRES_DB:-reciptdb}
+      POSTGRES_DB: ${POSTGRES_DB:-erpdb}
     ports:
       - "5433:5432"     # host:container (you're exposing Postgres on 5433 locally)
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myuser} -d ${POSTGRES_DB:-reciptdb}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myuser} -d ${POSTGRES_DB:-erpdb}"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -27,12 +27,12 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://0.0.0.0:8080
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-reciptdb};Username=${POSTGRES_USER:-myuser};Password=${POSTGRES_PASSWORD:-mypassword}
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-erpdb};Username=${POSTGRES_USER:-myuser};Password=${POSTGRES_PASSWORD:-mypassword}
       Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID:-}
       Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
       Jwt__Key: ${JWT_KEY:-change-me-in-.env}
-      Jwt__Issuer: ${JWT_ISSUER:-recipt-api}
-      Jwt__Audience: ${JWT_AUDIENCE:-recipt-api-users}
+      Jwt__Issuer: ${JWT_ISSUER:-erp-api}
+      Jwt__Audience: ${JWT_AUDIENCE:-erp-api-users}
     ports:
       - "5000:8080"
     volumes:

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Recipt_api;
+using ErpApi;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {

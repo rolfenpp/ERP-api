@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: erp-api
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    autoDeployTrigger: commit
+    healthCheckPath: /health
+    envVars:
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: erp-db
+          property: connectionString
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: erp-api
+      - key: Jwt__Audience
+        value: erp-api-users
+      - key: Cors__AllowedOrigins
+        value: https://app.yourdomain.com
+
+databases:
+  - name: erp-db
+    plan: basic-256mb

@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore; // AnyAsync
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.WebUtilities; // for WebEncoders
-using System.Text; // for Encoding
-using System.Linq; // LINQ
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
 
 [ApiController]
 [Route("[controller]")]

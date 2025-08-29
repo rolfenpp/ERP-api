@@ -5,7 +5,7 @@
 namespace Recipt_api.Migrations
 {
     /// <inheritdoc />
-    public partial class newmigration : Migration
+    public partial class InitialCreatee : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

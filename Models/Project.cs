@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Recipt_api
+namespace ErpApi
 {
     public class Project
     {

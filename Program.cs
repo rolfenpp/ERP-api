@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
-namespace Recipt_api
+namespace ErpApi
 {
     public class Program
     {
@@ -72,7 +72,9 @@ namespace Recipt_api
                 }
             });
 
-            var allowedOrigins = new[] { "http://localhost:5173" };
+            // CORS: configurable via env Cors__AllowedOrigins (comma-separated), default to localhost for dev
+            var allowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? "http://localhost:5173")
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
             builder.Services.AddCors(opt =>
             {

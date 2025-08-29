@@ -1,2 +1,54 @@
-# Environment files
+# Build output
+bin/
+obj/
+out/
+publish/
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+# Visual Studio / JetBrains
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.idea/
+_ReSharper.Caches/
+*_ReSharper*/
+*.DotSettings.user
+
+# VS Code (optional)
+.vscode/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# NuGet/packages
+packages/
+*.nupkg
+*.snupkg
+.nuget/packages/
+
+# Logs/temp
+*.log
+logs/
+*.tmp
+
+# Docker / env
 .env
+.env.*
+!.env.example
+docker-compose.override.yml
+docker-compose.*.local.yml
+docker-compose.*.override.yml
+
+# Local app config overrides (keep normal appsettings in git, but don't commit local overrides)
+appsettings.*.local.json
+
+# pgAdmin / local tooling
+servers.json
+!servers.example.json
+
+# If you bind-mount DB data locally (named volumes don’t need this)
+pgdata/
