@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>Recipt_api</RootNamespace>
+    <RootNamespace>ErpApi</RootNamespace>
     <UserSecretsId>e35f7ce7-860f-4d02-a48b-ba751b3f22cd</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
