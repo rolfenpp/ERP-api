@@ -18,7 +18,7 @@ services:
       - key: Jwt__Audience
         value: erp-api-users
       - key: Cors__AllowedOrigins
-        value: https://app.yourdomain.com
+        value: http://localhost:5173
 
 databases:
   - name: erp-db
