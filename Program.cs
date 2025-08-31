@@ -116,6 +116,8 @@ namespace ErpApi
             });
 
             builder.Services.AddScoped<JwtTokenHelper>();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ITenantProvider, HttpContextTenantProvider>();
 
             var app = builder.Build();
 
