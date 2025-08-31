@@ -10,14 +10,15 @@ using System.ComponentModel.DataAnnotations;
 public class InventoryController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly ITenantProvider _tenantProvider;
 
-    public InventoryController(ApplicationDbContext db) => _db = db;
-
-    private int GetCompanyId()
+    public InventoryController(ApplicationDbContext db, ITenantProvider tenantProvider)
     {
-        var claim = User.FindFirst("companyId")?.Value;
-        return int.TryParse(claim, out var id) ? id : 0;
+        _db = db;
+        _tenantProvider = tenantProvider;
     }
+
+    private int GetCompanyId() => _tenantProvider.CompanyId;
 
     // List inventory (user or admin via permission)
     [HttpGet]

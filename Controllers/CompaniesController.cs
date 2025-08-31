@@ -11,15 +11,18 @@ public class CompaniesController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly JwtTokenHelper _jwtTokenHelper;
+    private readonly ITenantProvider _tenantProvider;
 
     public CompaniesController(
         ApplicationDbContext db,
         UserManager<ApplicationUser> userManager,
-        JwtTokenHelper jwtTokenHelper)
+        JwtTokenHelper jwtTokenHelper,
+        ITenantProvider tenantProvider)
     {
         _db = db;
         _userManager = userManager;
         _jwtTokenHelper = jwtTokenHelper;
+        _tenantProvider = tenantProvider;
     }
 
     // Register a company and bootstrap its Admin
@@ -78,8 +81,8 @@ public class CompaniesController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> GetMyCompany()
     {
-        var companyIdClaim = User.FindFirst("companyId")?.Value;
-        if (!int.TryParse(companyIdClaim, out var companyId) || companyId <= 0)
+        var companyId = _tenantProvider.CompanyId;
+        if (companyId <= 0)
             return NotFound("Company not found.");
 
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId);

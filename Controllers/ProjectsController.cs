@@ -10,14 +10,15 @@ using ErpApi;
 public class ProjectsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly ITenantProvider _tenantProvider;
 
-    public ProjectsController(ApplicationDbContext db) => _db = db;
-
-    private int GetCompanyId()
+    public ProjectsController(ApplicationDbContext db, ITenantProvider tenantProvider)
     {
-        var claim = User.FindFirst("companyId")?.Value;
-        return int.TryParse(claim, out var id) ? id : 0;
+        _db = db;
+        _tenantProvider = tenantProvider;
     }
+
+    private int GetCompanyId() => _tenantProvider.CompanyId;
 
     // List projects (any authenticated user in company)
     [HttpGet]

@@ -22,7 +22,8 @@ public class HttpContextTenantProvider : ITenantProvider
             var user = _httpContextAccessor.HttpContext?.User;
             if (user is null) return 0;
 
-            var claimValue = user.FindFirst("companyId")?.Value;
+            // Backward-compatible: prefer tenantId, fallback to companyId
+            var claimValue = user.FindFirst("tenantId")?.Value ?? user.FindFirst("companyId")?.Value;
             return int.TryParse(claimValue, out var id) ? id : 0;
         }
     }
