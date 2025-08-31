@@ -12,7 +12,7 @@ services:
           name: erp-db
           property: connectionString
       - key: Jwt__Key
-        sync: false
+        value: "8K#mP9$vL2@nQ7&hF4!jR5%tY8*wE3^uI6(oA9)sD1#gH7$kL4@mN2&pQ5!rT8%vW3^xZ6"
       - key: Jwt__Issuer
         value: erp-api
       - key: Jwt__Audience
