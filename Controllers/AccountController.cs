@@ -309,7 +309,83 @@ public class AccountController : ControllerBase
         var roles = await _userManager.GetRolesAsync(user);
         var claims = await _userManager.GetClaimsAsync(user);
         var token = _jwtTokenHelper.GenerateToken(user, roles, claims);
-        return Ok(new { token });
+
+        // Issue refresh token cookie (HttpOnly, Secure, SameSite=None)
+        var refresh = _jwtTokenHelper.GenerateRefreshToken(user);
+        Response.Cookies.Append("rt", refresh, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Path = "/"
+        });
+
+        return Ok(new { token, accessToken = token });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh()
+    {
+        if (!Request.Cookies.TryGetValue("rt", out var rt) || string.IsNullOrWhiteSpace(rt))
+        {
+            return Unauthorized();
+        }
+
+        var principal = _jwtTokenHelper.ValidateRefreshToken(rt);
+        if (principal == null)
+        {
+            return Unauthorized();
+        }
+
+        var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? principal.FindFirst(ClaimTypes.Name)?.Value
+                     ?? principal.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return Unauthorized();
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var claims = await _userManager.GetClaimsAsync(user);
+        var access = _jwtTokenHelper.GenerateToken(user, roles, claims);
+
+        // Rotate refresh token
+        var nextRefresh = _jwtTokenHelper.GenerateRefreshToken(user);
+        Response.Cookies.Append("rt", nextRefresh, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Path = "/"
+        });
+
+        return Ok(new
+        {
+            token = access,
+            accessToken = access,
+            user = new
+            {
+                id = user.Id,
+                email = user.Email,
+                companyId = user.CompanyId,
+                roles,
+                permissions = (await _userManager.GetClaimsAsync(user)).Where(c => c.Type == "perm").Select(c => c.Value).ToArray()
+            }
+        });
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("rt", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Path = "/"
+        });
+        return NoContent();
     }
 }
 
