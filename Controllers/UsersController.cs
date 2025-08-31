@@ -9,15 +9,15 @@ using Microsoft.EntityFrameworkCore;
 public class UsersController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ITenantProvider _tenantProvider;
 
-    public UsersController(UserManager<ApplicationUser> userManager)
-        => _userManager = userManager;
-
-    private int GetCompanyId()
+    public UsersController(UserManager<ApplicationUser> userManager, ITenantProvider tenantProvider)
     {
-        var claim = User.FindFirst("companyId")?.Value;
-        return int.TryParse(claim, out var id) ? id : 0;
+        _userManager = userManager;
+        _tenantProvider = tenantProvider;
     }
+
+    private int GetCompanyId() => _tenantProvider.CompanyId;
 
     // List users within the same company (Admin only)
     [HttpGet]
