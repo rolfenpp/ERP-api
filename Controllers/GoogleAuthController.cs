@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -57,17 +57,10 @@ public class GoogleAccountController : ControllerBase
         }
         else
         {
+            // Do NOT auto-provision new users via Google. Only allow sign-in for existing invited users.
             user = await _userManager.FindByEmailAsync(email);
-            var isFirstUser = !await _userManager.Users.AnyAsync();
-
             if (user == null)
-            {
-                user = new ApplicationUser { UserName = email, Email = email };
-                var createResult = await _userManager.CreateAsync(user);
-                if (!createResult.Succeeded) return BadRequest(createResult.Errors);
-
-                await _userManager.AddToRoleAsync(user, isFirstUser ? "Admin" : "User");
-            }
+                return Forbid();
 
             var addLoginResult = await _userManager.AddLoginAsync(user, info);
             if (!addLoginResult.Succeeded) return BadRequest(addLoginResult.Errors);
