@@ -290,18 +290,9 @@ public class AccountController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterModel model)
     {
-        var isFirstUser = !await _userManager.Users.AnyAsync();
-
-        var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
-        var result = await _userManager.CreateAsync(user, model.Password);
-
-        if (!result.Succeeded)
-            return BadRequest(result.Errors);
-
-        var role = isFirstUser ? "Admin" : "User";
-        await _userManager.AddToRoleAsync(user, role);
-
-        return Ok("User registered successfully.");
+        // Disable bare registration to enforce company-first onboarding.
+        // Use POST /companies/register to create a company and its Admin, then Admin invites users.
+        return Forbid();
     }
 
     [HttpPost("login")]

@@ -20,6 +20,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(builder);
 
+        // Foreign keys and indexes for tenant integrity
+        builder.Entity<ApplicationUser>()
+            .HasIndex(u => u.CompanyId);
+
+        builder.Entity<Company>()
+            .HasIndex(c => c.Name)
+            .IsUnique(false);
+
+        builder.Entity<Project>()
+            .HasIndex(p => p.CompanyId);
+
+        builder.Entity<InventoryItem>()
+            .HasIndex(i => i.CompanyId);
+
         // Global query filters for tenant isolation
         // Do NOT filter ApplicationUser globally to avoid breaking login and admin flows.
         var companyId = _tenantProvider?.CompanyId ?? 0;
